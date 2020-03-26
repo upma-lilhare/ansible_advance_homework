@@ -1,0 +1,30 @@
+- name: Create db server
+  os_server:
+    cloud: ospcloud
+    state: present
+    name: db 
+    image: rhel-guest
+    key_name: ansible_ssh
+    flavor: m2.small
+    security_groups: db
+    meta: group=dbs,deployment_name=QA
+    wait: yes
+    nics:
+    - net-name: int_network
+
+- name: Add floating IP db
+  os_floating_ip:
+    cloud: ospcloud
+    state: present
+    server: db
+    network: ext_network
+  register: instancefloatingip
+
+- name: Wait for DB server to be available
+  wait_for:
+    host: "{{ instancefloatingip.floating_ip.floating_ip_address }}"
+    port: 22
+    search_regex: OpenSSH
+    timeout: 100
+  delegate_to: "{{ inventory_hostname }}"
+

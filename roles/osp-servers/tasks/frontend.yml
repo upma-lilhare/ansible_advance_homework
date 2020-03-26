@@ -1,0 +1,30 @@
+- name: Create frontend server
+  os_server:
+    cloud: ospcloud
+    state: present
+    name: frontend 
+    image: rhel-guest
+    key_name: ansible_ssh
+    flavor: m2.small
+    security_groups: frontend
+    meta: group=frontends,deployment_name=QA
+    wait: yes
+    nics:
+    - net-name: int_network
+
+- name: Add floating IP frontend
+  os_floating_ip:
+    cloud: ospcloud
+    state: present
+    server: frontend
+    network: ext_network
+  register: instancefloatingip
+
+- name: Wait for server to be available
+  wait_for:
+    host: "{{ instancefloatingip.floating_ip.floating_ip_address }}"
+    port: 22
+    search_regex: OpenSSH
+    timeout: 100
+  delegate_to: "{{ inventory_hostname }}"
+
