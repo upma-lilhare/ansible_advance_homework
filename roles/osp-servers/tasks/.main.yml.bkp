@@ -1,0 +1,32 @@
+- name: Create new server instances and attaches them a network and passes metadata to the instance
+  os_server:
+    cloud: "{{ item.value.cloud_name }}"
+    state: "{{ item.value.state }}"
+    name: "{{ item.value.name }}"
+    image: "{{ item.value.image }}"
+    key_name: "{{ item.value.key_name }}"
+    flavor: "{{ item.value.flavor }}"
+    security_groups: "{{ item.value.security_group }}"
+    meta: 
+    - "{{ item.value.meta }}"
+    wait: yes
+    nics:
+    - net-name:  "{{ item.value.in_net }}"
+  with_dict: "{{ osp_servers }}"
+
+- name: Add floating IP to Servers
+  os_floating_ip:
+    cloud:  "{{ item.value.cloud_name }}"
+    state:  "{{ item.value.state }}"
+    server: "{{ item.value.name }}"
+    network: "{{ item.value.ex_net }}"
+  register: instancefloatingip
+  with_dict: "{{ osp_servers }}"
+
+- name: Wait for server to be available
+  wait_for:
+    host: "{{ instancefloatingip.floating_ip.floating_ip_address }}"
+    port: 22
+    search_regex: OpenSSH
+    timeout: 600
+  delegate_to: "{{ inventory_hostname }}"
